@@ -3,7 +3,7 @@ package support
 import scala.annotation.switch
 import scala.collection.mutable.ArrayBuffer
 
-class TestContext(code: => String, val startLine: Int, val endLine: Int) {
+class TestContext(val code: String, val startLine: Int, val endLine: Int) {
   lazy val lines: List[(Int, String)] = TestContext.getLines(code)
 }
 
@@ -17,7 +17,7 @@ object TestContext {
     val lineBuf = new ArrayBuffer[String]()
     var charBuf = new ArrayBuffer[Char]()
     var previousChar: Char = 'a'
-    def closeLine() {
+    def closeLine(): Unit = {
       lineBuf.append(charBuf.mkString)
       charBuf = new ArrayBuffer[Char]()
     }

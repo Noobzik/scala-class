@@ -3,12 +3,17 @@ package support
 import org.scalatest.Stopper
 
 object CustomStopper extends Stopper {
-  var oneTestFailed = false
+  @volatile var oneTestFailed = false
 
   def stopRequested: Boolean = oneTestFailed
 
   def requestStop(): Unit = {
     oneTestFailed = true
-    ()
+  }
+
+  def hasFailed: Boolean = oneTestFailed
+
+  def reset(): Unit = {
+    oneTestFailed = false
   }
 }
