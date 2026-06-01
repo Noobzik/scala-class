@@ -67,4 +67,4 @@ Certains exercices ont des aides à la fin, pensez à regarder s'il y en a en ca
 
 ## Troubleshooting
 
-Le support pour Windows n'est plus assuré
+Le support pour Windows n'est plus assuré, vous êtes condamné à utiliser la version WSL via Intellij Remote Development
