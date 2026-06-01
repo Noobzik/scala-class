@@ -8,7 +8,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 object DevoxxApi {
-  private implicit val useCache = true
+  private implicit val useCache: Boolean = true
   val baseUrl = "http://cfp.devoxx.fr/api"
   val conference = "DevoxxFR2017"
   val conferenceUrl = s"$baseUrl/conferences/$conference"
