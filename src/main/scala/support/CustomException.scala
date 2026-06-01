@@ -15,23 +15,41 @@ class MyNotImplementedException(fileName: Option[String], ctx: TestContext, erro
 class MyTestFailedException(fileName: Option[String], ctx: TestContext, errors: Option[List[Int]], message: Option[String], cause: Throwable) extends MyException(fileName, ctx, errors, message, cause) {}
 
 object MyException {
-  def pause(suite: HandsOnSuite, ctx: TestContext, e: PauseException): MyTestPauseException = {
-    val stack = e.getStackTrace()(2)
+  private def exerciseFrame(stacks: List[StackTraceElement]): Option[StackTraceElement] =
+    stacks.find(e => e.getClassName.startsWith("exercices.") && e.getMethodName.startsWith("$anonfun"))
+      .orElse(stacks.find(_.getClassName.startsWith("exercices.")))
+
+  private def exerciseFrames(stacks: List[StackTraceElement]): List[StackTraceElement] =
+    stacks.filter(e => e.getClassName.startsWith("exercices.") && e.getMethodName.startsWith("$anonfun")) match {
+      case Nil => stacks.filter(_.getClassName.startsWith("exercices."))
+      case xs  => xs
+    }
+
+  private def nonEmpty[T](l: List[T]): Option[List[T]] =
+    if (l.nonEmpty) Some(l) else None
+
+  def pause(suite: HandsOnSuite, ctx: TestContext, e: PauseException): MyTestPauseException ={
+    val stack = e.getStackTrace.find(e => e.getClassName.startsWith("exercices.") && e.getMethodName.startsWith("$anonfun"))
+      .orElse(e.getStackTrace.find(_.getClassName.startsWith("exercices.")))
+      .getOrElse(e.getStackTrace()(2))
     val location = getLocation(suite, stack)
     new MyTestPauseException(Some(location), ctx, None, Some(e.message), e)
   }
 
   def pending(suite: HandsOnSuite, ctx: TestContext, e: TestPendingException): MyTestPendingException = {
-    val stack = e.getStackTrace()(2)
+    val stack = e.getStackTrace.find(e => e.getClassName.startsWith("exercices.") && e.getMethodName.startsWith("$anonfun"))
+      .orElse(e.getStackTrace.find(_.getClassName.startsWith("exercices.")))
+      .getOrElse(e.getStackTrace()(2))
     val location = getLocation(suite, stack)
     val errors = List(stack.getLineNumber)
     new MyTestPendingException(Some(location), ctx, Some(errors), Some(Formatter.missingValue), e)
   }
 
   def notImplemented(suite: HandsOnSuite, ctx: TestContext, e: NotImplementedError): MyNotImplementedException = {
-    val stacks = e.getStackTrace.take(7).filter(isSuiteClass(suite, _)).toList
-    val locationOpt = stacks.headOption.map(getLocation(suite, _))
-    val errors = stacks.map(_.getLineNumber).distinct
+    val stacks = exerciseFrames(e.getStackTrace.toList)
+    val target = stacks.lastOption
+    val locationOpt = target.map(getLocation(suite, _))
+    val errors = target.map(_.getLineNumber).toList
     new MyNotImplementedException(locationOpt, ctx, nonEmpty(errors), Some(Formatter.missingImplementation), e)
   }
 
@@ -42,12 +60,12 @@ object MyException {
   }
 
   def unknown(suite: HandsOnSuite, ctx: TestContext, e: Throwable): MyException = {
-    val stacks = e.getStackTrace.filter(isSuiteClass(suite, _)).toList
-    val locationOpt = stacks.headOption.map(getLocation(suite, _))
-    val errors = stacks.map(_.getLineNumber).distinct
+    val stacks = exerciseFrames(e.getStackTrace.toList)
+    val target = stacks.lastOption
+    val locationOpt = target.map(getLocation(suite, _))
+    val errors = target.map(_.getLineNumber).toList
     new MyException(locationOpt, ctx, nonEmpty(errors), Some(e.toString), e)
   }
-
   private def getPackage(suite: HandsOnSuite, name: String): String =
     List("src", "test", "scala", suite.getClass.getPackage.getName, name).mkString(java.io.File.separator)
 
@@ -57,6 +75,5 @@ object MyException {
   private def isSuiteClass(suite: HandsOnSuite, e: StackTraceElement): Boolean =
     e.getClassName.contains(suite.getClass.getName)
 
-  private def nonEmpty[T](l: List[T]): Option[List[T]] =
-    if (l.nonEmpty) Some(l) else None
+
 }
