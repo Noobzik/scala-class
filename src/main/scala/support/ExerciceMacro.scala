@@ -1,22 +1,38 @@
 package support
 
-import scala.reflect.macros.blackbox.Context
-
-class ExerciceMacro[C <: Context](val c: C) {
-  import c.universe._
-
-  def apply(testName: c.Expr[String])(testFun: c.Expr[Unit])(suite: c.Expr[HandsOnSuite]): c.Expr[Unit] = {
-    val code = testFun.tree.pos.source.content.mkString
-    val (start, end) = testFun.tree match {
-      case Block(xs, expr) => (testFun.tree.pos.line, expr.pos.line)
-      case _ => (testFun.tree.pos.line, testFun.tree.pos.line)
-    }
-    c.Expr(q"""$suite.testExercice($testName)($testFun)(new support.TestContext($code, $start, $end))""")
-  }
-}
+import scala.reflect.macros.blackbox
 
 object ExerciceMacro {
-  def apply(c: Context)(testName: c.Expr[String])(testFun: c.Expr[Unit])(suite: c.Expr[HandsOnSuite]): c.Expr[Unit] = {
-    new ExerciceMacro[c.type](c).apply(testName)(testFun)(suite)
+  def apply(
+             c: blackbox.Context
+           )(
+             testName: c.Tree
+           )(
+             testFun: c.Tree
+           )(
+             suite: c.Tree
+           ): c.Tree = {
+    import c.universe._
+
+    val pos = testFun.pos
+    val code =
+      if (pos != null && pos.source != null)
+        pos.source.content.mkString
+      else ""
+
+    val (start, end) = testFun match {
+      case Block(_, expr) if expr.pos != null && expr.pos.line > 0 =>
+        (pos.line, expr.pos.line)
+      case _ if pos != null && pos.line > 0 =>
+        (pos.line, pos.line)
+      case _ =>
+        (0, 0)
+    }
+
+    q"""
+      $suite.testExercice($testName)($testFun)(
+        new support.TestContext($code, $start, $end)
+      )
+    """
   }
 }
